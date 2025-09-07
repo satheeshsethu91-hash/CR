@@ -1,0 +1,12 @@
+
+streamlit
+feedparser
+requests
+beautifulsoup4
+pandas
+langdetect
+transformers
+bcrypt
+pyyaml
+openai
+sqlite3
