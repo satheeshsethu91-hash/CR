@@ -8,4 +8,3 @@ transformers
 bcrypt
 pyyaml
 openai
-sqlite3
