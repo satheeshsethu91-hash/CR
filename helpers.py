@@ -2,10 +2,10 @@ import sqlite3
 import os
 import bcrypt
 
-# DB path
+# Database path
 DB_FILE = os.path.join("/home/appuser", "app_data.db")
 
-# Connect to DB
+# Connect to the database
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
 
@@ -16,7 +16,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash BLOB NOT NULL,
     role TEXT NOT NULL
 )
 """)
@@ -46,15 +46,22 @@ conn.commit()
 # -------------------------------
 def add_user(username, password, role="client"):
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    cursor.execute("INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                   (username, password_hash, role))
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+        (username, password_hash, role)
+    )
     conn.commit()
 
 def check_user(username, password):
     cursor.execute("SELECT password_hash, role FROM users WHERE username=?", (username,))
     row = cursor.fetchone()
-    if row and bcrypt.checkpw(password.encode(), row[0]):
-        return row[1]  # return role
+    if row:
+        stored_hash, role = row
+        # Ensure stored_hash is bytes
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode('utf-8')
+        if bcrypt.checkpw(password.encode(), stored_hash):
+            return role  # Login successful
     return None
 
 # -------------------------------
@@ -86,3 +93,13 @@ def add_keyword(keyword):
 def get_keywords():
     cursor.execute("SELECT keyword FROM keywords")
     return [k[0] for k in cursor.fetchall()]
+
+# -------------------------------
+# Initialize default admin
+# -------------------------------
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin123"
+
+cursor.execute("SELECT * FROM users WHERE username=?", (DEFAULT_ADMIN_USERNAME,))
+if not cursor.fetchone():
+    add_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, role="admin")
